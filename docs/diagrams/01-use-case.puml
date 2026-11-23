@@ -1,0 +1,50 @@
+@startuml
+!include _style.iuml
+!pragma layout smetana
+left to right direction
+title Use Case Diagram - Login Attempt Monitoring System (v2)
+
+actor "Visitor" as V
+actor "Registered User" as U
+actor "Administrator" as A
+actor "Attacker" as X
+actor "System\n(detection rules)" as S
+
+rectangle "LAMS Web Application" {
+  usecase "Register\n(breached-password check)" as UC1
+  usecase "Login" as UC2
+  usecase "View my login activity\nand active sessions" as UC3
+  usecase "Sign out other devices" as UC4
+  usecase "Report \"This wasn't me\"" as UC5
+  usecase "Change password" as UC6
+  usecase "Monitor overview,\nattempt log, IP details" as UC7
+  usecase "Handle alerts" as UC8
+  usecase "Block / unblock / ban IP,\ntrust IP, lift lock" as UC9
+  usecase "Manage users" as UC10
+  usecase "Run attack simulation" as UC11
+  usecase "Check block / lock\nbefore password" as UC12
+  usecase "Apply rules 1-5\n(lock / block)" as UC13
+  usecase "Risk-check successful login\nand raise alerts" as UC14
+}
+
+V --> UC1
+U --> UC2
+U --> UC3
+U --> UC4
+U --> UC5
+U --> UC6
+A --> UC2
+A --> UC7
+A --> UC8
+A --> UC9
+A --> UC10
+A --> UC11
+X --> UC2
+S --> UC13
+S --> UC14
+
+UC2 ..> UC12 : <<include>>
+UC13 ..> UC2 : <<extend>>\nwrong password
+UC14 ..> UC2 : <<extend>>\ncorrect password
+UC5 ..> UC6 : <<include>>
+@enduml

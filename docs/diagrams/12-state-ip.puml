@@ -1,0 +1,25 @@
+@startuml
+!include _style.iuml
+!pragma layout smetana
+title State Diagram - Life Cycle of an IP Address (v2)
+
+[*] --> Normal
+Normal : no recent failures
+Normal --> Watched : wrong password
+Watched : failures counted per account+IP,\nper IP and per account (10 min)
+Watched --> Watched : more failures\n(below every limit)
+Watched --> Normal : failures older than 10 min\nor a successful login (Rule 1)
+Watched --> PairLocked : Rule 1: 5 failures\nfor one account
+PairLocked : only that account is refused\nfrom this IP for 15 min
+PairLocked --> Watched : 15 minutes pass\nor admin lifts the lock
+Watched --> Blocked : Rule 2 (4 accounts)\nor Rule 3 (10 failures)
+Blocked : every login refused;\nlength 15 min -> 1 h -> 24 h (Rule 5)
+Blocked --> Blocked : any request\n(saved as BLOCKED, expiry not extended)
+Blocked --> Normal : block expires\nor admin unblocks
+Normal --> Banned : admin bans permanently
+Banned : refused until the admin unblocks
+Banned --> Normal : admin unblocks
+Normal --> Trusted : admin adds to allow-list
+Trusted : never blocked by Rules 2, 3, 5\n(account locks still apply)
+Trusted --> Normal : removed from allow-list
+@enduml

@@ -1,0 +1,21 @@
+@startuml
+!include _style.iuml
+!pragma layout smetana
+left to right direction
+title Data Flow Diagram - Level 0 (Context Diagram)
+
+rectangle "User" as U #dfe6f0
+rectangle "Administrator" as A #dfe6f0
+rectangle "IP location service\n(ip-api.com)" as G #e8f1e8
+rectangle "Breach database\n(Pwned Passwords)" as H #e8f1e8
+usecase "0.0\nLogin Attempt\nMonitoring System" as P #fdf2e3
+
+U --> P : registration, credentials,\n"This wasn't me", sign-out
+P --> U : My Security page, warnings,\nerror / paused / blocked messages
+A --> P : searches, block / unblock,\nallow-list, user changes, simulations
+P --> A : statistics, charts, alerts,\nattempt log, IP details, audit log
+P --> G : IP address
+G --> P : country, city, ISP, VPN flag
+P --> H : first 5 characters\nof the password hash
+H --> P : matching hash suffixes
+@enduml

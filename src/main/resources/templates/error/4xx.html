@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Error')}"></head>
+<body>
+<div th:replace="~{fragments :: header('public', false)}"></div>
+<div class="wrapper page">
+    <div class="panel form-panel">
+        <div class="panel-title">Request Error</div>
+        <div class="panel-body">
+            <p>Your request could not be processed. Please go back and try again.</p>
+            <p><a th:href="@{/}">Go to Home Page</a></p>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments :: footer}"></div>
+</body>
+</html>

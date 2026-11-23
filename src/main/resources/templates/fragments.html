@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Common parts (head, header, menus, footer) included in every page -->
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' - LAMS'">LAMS</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<div th:fragment="header(page, isAdmin)" class="topbar">
+    <div class="wrapper topbar-inner">
+        <a class="logo" th:href="@{/}">
+            <img th:src="@{/img/logo.svg}" alt="" width="26" height="26">
+            <span><b>LAMS</b> &nbsp;Login Attempt Monitoring System</span>
+        </a>
+        <div class="menu" th:if="${page != 'public'}">
+            <a th:href="@{/dashboard}" th:classappend="${page == 'dashboard'} ? 'current'">My Security</a>
+            <a th:href="@{/account/password}" th:classappend="${page == 'password'} ? 'current'">Change Password</a>
+            <a th:if="${isAdmin}" th:href="@{/admin}" th:classappend="${page == 'admin'} ? 'current'">Admin Panel</a>
+            <form th:action="@{/logout}" method="post" class="logout-form">
+                <button type="submit" class="link-button">Logout</button>
+            </form>
+        </div>
+        <div class="menu" th:if="${page == 'public'}">
+            <a th:href="@{/login}">Login</a>
+            <a th:href="@{/register}">Register</a>
+        </div>
+    </div>
+</div>
+
+<!-- Admin sub-menu. "active" is the current section. -->
+<div th:fragment="adminNav(active)" class="subnav">
+    <a th:href="@{/admin}" th:classappend="${active == 'overview'} ? 'current'">Overview</a>
+    <a th:href="@{/admin/attempts}" th:classappend="${active == 'attempts'} ? 'current'">Attempt Log</a>
+    <a th:href="@{/admin/alerts}" th:classappend="${active == 'alerts'} ? 'current'">Alerts<span class="badge"
+            th:if="${openAlertCount != null and openAlertCount > 0}" th:text="${openAlertCount}">3</span></a>
+    <a th:href="@{/admin/protection}" th:classappend="${active == 'protection'} ? 'current'">Blocks &amp; Locks</a>
+    <a th:href="@{/admin/users}" th:classappend="${active == 'users'} ? 'current'">Users</a>
+    <a th:href="@{/admin/simulator}" th:classappend="${active == 'simulator'} ? 'current'">Attack Simulator</a>
+    <a th:href="@{/admin/audit}" th:classappend="${active == 'audit'} ? 'current'">Audit Log</a>
+</div>
+
+<!-- Success / error messages passed through a redirect -->
+<div th:fragment="flash">
+    <div th:if="${message}" class="msg msg-success" th:text="${message}">Done.</div>
+    <div th:if="${error}" class="msg msg-error" th:text="${error}">Something went wrong.</div>
+</div>
+
+<!-- IP address with its location underneath; links to the IP page when "link" is true -->
+<th:block th:fragment="ip(address, info, link)">
+    <a th:if="${link}" th:href="@{/admin/ip(ip=${address})}" class="mono" th:text="${address}">203.0.113.5</a>
+    <span th:unless="${link}" class="mono" th:text="${address}">203.0.113.5</span>
+    <div class="sub" th:if="${info != null}">
+        <span th:text="${info.flag}"></span>
+        <span th:text="${info.locationLabel}">Mumbai, India</span>
+        <span class="tag tag-warn" th:if="${info.proxy}" title="Proxy, VPN or Tor exit">VPN</span>
+        <span class="tag tag-warn" th:if="${info.hosting and !info.proxy}" title="Data centre / hosting provider">DATA CENTRE</span>
+    </div>
+</th:block>
+
+<!-- Outcome label plus reason / simulated tags -->
+<th:block th:fragment="outcome(a)">
+    <span class="label" th:classappend="'label-' + ${#strings.toLowerCase(a.outcome.name())}"
+          th:text="${a.outcome.name()}">SUCCESS</span>
+    <span class="tag tag-sim" th:if="${a.simulated}" title="Created by the attack simulator">SIMULATED</span>
+    <div class="sub" th:if="${a.reason != null}" th:text="${a.reason.label}">Wrong password</div>
+</th:block>
+
+<!-- Risk flags of a successful login -->
+<th:block th:fragment="risk(a)">
+    <span th:each="flag : ${a.riskFlagList}" class="tag"
+          th:classappend="${flag.score >= 2} ? 'tag-danger' : 'tag-warn'" th:text="${flag.label}">New device</span>
+    <span th:if="${a.outcome.name() == 'SUCCESS' and #lists.isEmpty(a.riskFlagList)}" class="muted">-</span>
+</th:block>
+
+<div th:fragment="footer" class="footer">
+    &copy; 2026 LAMS - Login Attempt Monitoring System | Sarth Sethi, Chandigarh University
+</div>
+
+</body>
+</html>

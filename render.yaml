@@ -1,0 +1,40 @@
+# Render Blueprint: free Docker web service for LAMS.
+# The MySQL database is NOT hosted on Render (Render's free databases are PostgreSQL only);
+# use an external MySQL such as Aiven Free MySQL and enter its details when prompted.
+# Values marked "sync: false" are asked for in the Render dashboard and never stored in Git.
+services:
+  - type: web
+    name: login-monitoring-system
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      # Copy these four values from the Aiven service "Overview" page
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: login_monitoring_system
+      - key: DB_SSL_MODE
+        value: REQUIRED
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: DISPLAY_TIMEZONE
+        value: Asia/Kolkata
+      # Render sets RENDER=true by itself, and the app then reads the visitor IP from Cloudflare's
+      # CF-Connecting-IP header. This list (Render's internal proxies + Cloudflare's published ranges,
+      # https://www.cloudflare.com/ips/) is only a fallback for reading X-Forwarded-For.
+      - key: TRUSTED_PROXIES
+        value: "10.0.0.0/8,173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22,2400:cb00::/32,2606:4700::/32,2803:f800::/32,2405:b500::/32,2405:8100::/32,2a06:98c0::/29,2c0f:f248::/32"

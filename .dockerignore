@@ -1,0 +1,11 @@
+# Keep secrets and build output out of the Docker image
+.env
+*.env
+.git
+.gitignore
+target/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+*.log

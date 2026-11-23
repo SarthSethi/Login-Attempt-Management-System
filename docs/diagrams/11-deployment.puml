@@ -1,0 +1,36 @@
+@startuml
+!include _style.iuml
+!pragma layout smetana
+title Deployment Diagram (free hosting)
+
+node "Client device" as C {
+  artifact "Web browser" as BR
+}
+cloud "Cloudflare edge\n(sets CF-Connecting-IP)" as CF
+node "Render (free web service)" as R {
+  node "Load balancer\n(HTTPS / TLS termination)" as LB
+  node "Docker container\n(eclipse-temurin:21-jre)" as DC {
+    artifact "login-monitoring-system.jar\n(Spring Boot + Tomcat)" as JAR
+  }
+}
+node "Aiven (free MySQL plan)" as AV {
+  database "MySQL 8\n8 tables" as DB
+}
+cloud "ip-api.com" as API1
+cloud "api.pwnedpasswords.com" as API2
+
+BR --> CF : HTTPS
+CF --> LB
+LB --> JAR : HTTP, port $PORT
+JAR --> DB : JDBC over SSL\n(sslMode=REQUIRED)
+JAR ..> API1 : IP location (cached)
+JAR ..> API2 : breach check (k-anonymity)
+
+note right of JAR
+  Env variables: DB_HOST, DB_PORT,
+  DB_USERNAME, DB_PASSWORD,
+  ADMIN_EMAIL, ADMIN_PASSWORD,
+  SPRING_PROFILES_ACTIVE=prod
+  RENDER=true (set by Render)
+end note
+@enduml

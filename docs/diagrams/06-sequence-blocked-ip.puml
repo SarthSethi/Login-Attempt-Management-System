@@ -1,0 +1,29 @@
+@startuml
+!include _style.iuml
+autonumber
+title Sequence Diagram - Correct Password from a Blocked IP / Locked Account
+
+actor "Browser" as B
+participant "CsrfFilter" as CSRF
+participant "LoginProtection\nFilter" as LPF
+participant "ClientIpResolver" as CIR
+participant "LoginProtection\nService" as LPS
+participant "UsernamePassword\nAuthenticationFilter" as UPAF
+database "MySQL" as DB
+
+B -> CSRF : POST /login (correct email + password)
+CSRF -> LPF : token valid
+LPF -> CIR : resolve(request)
+CIR --> LPF : visitor IP (CF-Connecting-IP on Render)
+LPF -> LPS : checkBeforeLogin(ip, email)
+LPS -> DB : active block for ip? lock for email+ip?\naccount under attack and ip never used?
+DB --> LPS : yes
+LPS --> LPF : Denial(reason, until)
+LPF -> LPS : recordDenied(...)
+LPS -> DB : INSERT login_attempts (BLOCKED, reason)
+LPF --> B : redirect /login?blocked&wait=M or /login?locked&wait=M
+note over LPF, UPAF #fbeaea
+  The chain stops here. The password is not checked,
+  no session is created and the expiry is NOT extended.
+end note
+@enduml

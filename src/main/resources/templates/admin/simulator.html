@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Attack Simulator')}"></head>
+<body>
+<div th:replace="~{fragments :: header('admin', true)}"></div>
+
+<div class="wrapper wide page">
+    <div class="heading-row">
+        <h2 class="page-heading">Attack Simulator</h2>
+        <form th:action="@{/admin/simulator/clear}" method="post" class="inline-form"
+              data-confirm="Delete all simulated attempts, blocks, locks and alerts?">
+            <button type="submit" class="btn btn-grey">Clear simulated data</button>
+        </form>
+    </div>
+    <div th:replace="~{fragments :: adminNav('simulator')}"></div>
+    <div th:replace="~{fragments :: flash}"></div>
+
+    <p class="small-text">Runs test attacks through the real rules. Test IPs come from reserved ranges
+        (203.0.113.x, 198.51.100.x, 192.0.2.x) and all data is marked <span class="tag tag-sim">SIMULATED</span>.</p>
+
+    <!-- Result of the last run -->
+    <div class="panel" th:if="${result != null}" id="simulation-result">
+        <div class="panel-title">Result: <span th:text="${result.scenario().title}">Brute force</span>
+            against <span th:text="${result.target()}">user@example.com</span>
+            <span class="right"><a th:href="@{/admin}">see the overview</a> <a th:href="@{/admin/alerts}">see alerts</a></span></div>
+        <div class="panel-body">
+            <ol class="steps">
+                <li th:each="s : ${result.steps()}" th:text="${s}">step</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">Run a Scenario</div>
+        <div class="panel-body">
+            <div class="scenario" th:each="sc : ${scenarios}">
+                <h3 th:text="${sc.title}">Brute force</h3>
+                <p th:text="${sc.description}">description</p>
+                <p class="small-text" th:text="${sc.expected}">expected</p>
+                <form th:action="@{/admin/simulator/run}" method="post" class="form-row">
+                    <input type="hidden" name="scenario" th:value="${sc.name()}">
+                    <div class="field">
+                        <label th:for="'target-' + ${sc.name()}">Target account</label>
+                        <select th:id="'target-' + ${sc.name()}" name="target">
+                            <option th:each="u : ${users}" th:value="${u.email}"
+                                    th:text="${u.email + (u.role.name() == 'ADMIN' ? ' (admin)' : '')}">user@example.com</option>
+                            <option th:if="${sc.name() != 'ACCOUNT_TAKEOVER'}" value="nobody@example.com">nobody@example.com (no account)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-red">Run attack</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: footer}"></div>
+<script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>

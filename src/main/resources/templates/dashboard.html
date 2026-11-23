@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('My Security')}"></head>
+<body>
+<div th:replace="~{fragments :: header('dashboard', ${isAdmin})}"></div>
+
+<div class="wrapper wide page">
+    <h2 class="page-heading">Welcome, <span th:text="${name}">User</span></h2>
+    <div th:replace="~{fragments :: flash}"></div>
+
+    <!-- Security status -->
+    <div th:if="${underAttackUntil != null}" class="security-banner security-danger">
+        <b>Your account is under attack.</b>
+        Until <span th:text="${@dates.format(underAttackUntil)}">-</span> you can only sign in from networks you have used before.
+    </div>
+    <div th:if="${underAttackUntil == null and failedSinceLastLogin > 0}" class="security-banner security-warn">
+        <b><span th:text="${failedSinceLastLogin}">3</span> failed sign-in attempt(s) on your account since your last login.</b>
+        If this was not you, <a th:href="@{/account/password}">change your password</a>.
+    </div>
+    <div th:if="${underAttackUntil == null and failedSinceLastLogin == 0}" class="security-banner security-ok">
+        <b>No failed sign-in attempts since your last login.</b>
+    </div>
+
+    <div class="grid-2">
+        <div class="panel">
+            <div class="panel-title">My Account</div>
+            <div class="panel-body">
+                <table class="info-table">
+                    <tr>
+                        <td class="info-label">Name</td>
+                        <td th:text="${name}">-</td>
+                    </tr>
+                    <tr>
+                        <td class="info-label">Email ID</td>
+                        <td th:text="${email}">-</td>
+                    </tr>
+                    <tr>
+                        <td class="info-label">Account Created On</td>
+                        <td th:text="${@dates.format(createdAt)}">-</td>
+                    </tr>
+                    <tr>
+                        <td class="info-label">Last Login</td>
+                        <td th:if="${previousLogin != null}">
+                            <span th:text="${@dates.format(previousLogin.attemptedAt)}">-</span>
+                            (IP: <span th:text="${previousLogin.ipAddress}">-</span>)
+                            <div class="sub" th:text="${previousLoginLocation + ' - ' + previousLogin.deviceLabel}">-</div>
+                        </td>
+                        <td th:if="${previousLogin == null}">This is your first login.</td>
+                    </tr>
+                </table>
+                <p th:if="${isAdmin}">You are logged in as administrator. Go to <a th:href="@{/admin}">Admin Panel</a>.</p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Active Sessions
+                <span class="right" th:if="${#lists.size(sessions) > 1}">
+                    <form th:action="@{/account/sessions/signout-others}" method="post" class="inline-form">
+                        <button type="submit" class="btn btn-sm btn-red">Sign out all other devices</button>
+                    </form>
+                </span>
+            </div>
+            <div class="panel-body table-scroll">
+                <table class="list" id="sessions-table">
+                    <tr>
+                        <th>Device</th>
+                        <th>IP / Location</th>
+                        <th>Signed in</th>
+                        <th></th>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(sessions)}">
+                        <td colspan="4" class="no-data">No session information yet (sign in again to see it).</td>
+                    </tr>
+                    <tr th:each="s : ${sessions}">
+                        <td>
+                            <span th:text="${s.device}">Chrome on Windows</span>
+                            <div class="sub" th:text="${s.deviceType}">Desktop</div>
+                        </td>
+                        <td>
+                            <span class="mono" th:text="${s.ip}">-</span>
+                            <div class="sub" th:text="${s.location}">-</div>
+                        </td>
+                        <td th:text="${s.loginAt != null ? @dates.format(s.loginAt) : '-'}">-</td>
+                        <td>
+                            <span th:if="${s.current}" class="tag tag-ok">THIS DEVICE</span>
+                            <form th:if="${!s.current and s.handle != null}" th:action="@{/account/sessions/signout}"
+                                  method="post" class="inline-form">
+                                <input type="hidden" name="handle" th:value="${s.handle}">
+                                <button type="submit" class="btn btn-sm btn-grey">Sign out</button>
+                            </form>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login activity -->
+    <div class="panel">
+        <div class="panel-title">Recent Login Activity <small>(last 25 attempts on your account)</small></div>
+        <div class="panel-body table-scroll">
+            <table class="list" id="activity-table">
+                <tr>
+                    <th>Date &amp; Time</th>
+                    <th>Result</th>
+                    <th>IP / Location</th>
+                    <th>Device</th>
+                    <th>Warning signs</th>
+                    <th></th>
+                </tr>
+                <tr th:if="${#lists.isEmpty(activity)}">
+                    <td colspan="6" class="no-data">No activity yet.</td>
+                </tr>
+                <tr th:each="row : ${activity}" th:classappend="${row.attempt.reported} ? 'reported'">
+                    <td th:text="${@dates.format(row.attempt.attemptedAt)}">-</td>
+                    <td>
+                        <span class="label" th:classappend="'label-' + ${#strings.toLowerCase(row.attempt.outcome.name())}"
+                              th:text="${row.attempt.outcome.name()}">SUCCESS</span>
+                        <span class="tag tag-sim" th:if="${row.attempt.simulated}">SIMULATED</span>
+                        <div class="sub" th:if="${row.attempt.outcome.name() == 'BLOCKED'}">Stopped by login protection</div>
+                    </td>
+                    <td><th:block th:replace="~{fragments :: ip(${row.attempt.ipAddress}, ${row.info}, false)}"></th:block></td>
+                    <td>
+                        <span th:text="${row.attempt.deviceLabel}">Chrome on Windows</span>
+                        <div class="sub" th:text="${row.attempt.deviceType}">Desktop</div>
+                    </td>
+                    <td class="wrap risk-cell"><th:block th:replace="~{fragments :: risk(${row.attempt})}"></th:block></td>
+                    <td>
+                        <span th:if="${row.currentLogin}" class="tag tag-ok">THIS SESSION</span>
+                        <span th:if="${row.attempt.reported}" class="tag tag-danger">REPORTED</span>
+                        <form th:if="${row.canReport}" th:action="@{/account/report/{id}(id=${row.attempt.id})}"
+                              method="post" class="inline-form"
+                              data-confirm="Report this login as not you? Your other sessions will be signed out and the IP blocked.">
+                            <button type="submit" class="btn btn-sm btn-red">This wasn't me</button>
+                        </form>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <form th:action="@{/logout}" method="post">
+        <button type="submit" class="btn btn-red">Logout</button>
+    </form>
+</div>
+
+<div th:replace="~{fragments :: footer}"></div>
+<script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>

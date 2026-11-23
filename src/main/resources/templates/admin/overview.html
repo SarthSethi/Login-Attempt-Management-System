@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Admin Overview')}"></head>
+<body>
+<div th:replace="~{fragments :: header('admin', true)}"></div>
+
+<div class="wrapper wide page">
+    <div class="heading-row">
+        <h2 class="page-heading">Security Overview</h2>
+        <a class="btn" th:href="@{/admin(range=${week ? '7d' : null})}">Refresh</a>
+    </div>
+    <div th:replace="~{fragments :: adminNav('overview')}"></div>
+    <div th:replace="~{fragments :: flash}"></div>
+
+    <!-- Summary boxes -->
+    <div class="stats six">
+        <div class="stat-box">
+            <div class="stat-number" id="stat-total" th:text="${totalAttempts}">0</div>
+            <div class="stat-label">Total Login Attempts</div>
+            <div class="stat-sub">last 24 h: <span id="stat-24h" th:text="${attempts24h}">0</span></div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number red" id="stat-failed" th:text="${failedAttempts}">0</div>
+            <div class="stat-label">Failed Attempts</div>
+            <div class="stat-sub">last 24 h: <span th:text="${failed24h}">0</span></div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number green" id="stat-success" th:text="${successfulAttempts}">0</div>
+            <div class="stat-label">Successful Logins</div>
+            <div class="stat-sub">last 24 h: <span th:text="${success24h}">0</span></div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number orange" id="stat-blocked-requests" th:text="${blockedRequests}">0</div>
+            <div class="stat-label">Requests Stopped</div>
+            <div class="stat-sub">last 24 h: <span th:text="${blocked24h}">0</span></div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number orange" id="stat-active-blocks" th:text="${activeBlockedIps}">0</div>
+            <div class="stat-label">Blocked IPs Now</div>
+            <div class="stat-sub">locked accounts: <span id="stat-active-locks" th:text="${activeLocks}">0</span></div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number red" id="stat-open-alerts" th:text="${openAlertCount}">0</div>
+            <div class="stat-label">Open Alerts</div>
+            <div class="stat-sub"><a th:href="@{/admin/alerts}">view alerts</a></div>
+        </div>
+    </div>
+
+    <!-- Activity chart -->
+    <div class="panel">
+        <div class="panel-title">Login Activity <small th:text="'(' + ${chart.period} + ', ' + ${chart.total} + ' attempts)'">(last 24 hours)</small>
+            <span class="right">
+                <a th:href="@{/admin}" th:classappend="${!week} ? 'current'">24 hours</a>
+                <a th:href="@{/admin(range='7d')}">7 days</a>
+            </span>
+        </div>
+        <div class="panel-body">
+            <svg class="chart" viewBox="0 0 720 170" role="img" aria-label="Login attempts over time">
+                <g th:each="g : ${chart.grid}">
+                    <line class="grid" th:attr="x1=${chart.left()},x2=${chart.width()},y1=${g.y},y2=${g.y}"></line>
+                    <text class="axis" text-anchor="end" th:attr="x=${chart.left() - 4},y=${g.labelY}" th:text="${g.value}">0</text>
+                </g>
+                <g th:each="b : ${chart.bars}">
+                    <title th:text="${b.tooltip}">tooltip</title>
+                    <rect class="bar-success" th:attr="x=${b.x},y=${b.ySuccess},width=${b.width},height=${b.hSuccess}"></rect>
+                    <rect class="bar-failed" th:attr="x=${b.x},y=${b.yFailed},width=${b.width},height=${b.hFailed}"></rect>
+                    <rect class="bar-blocked" th:attr="x=${b.x},y=${b.yBlocked},width=${b.width},height=${b.hBlocked}"></rect>
+                    <text th:if="${b.showLabel}" class="axis" text-anchor="middle"
+                          th:attr="x=${b.labelX},y=${chart.height() - 6}" th:text="${b.label}">10:00</text>
+                </g>
+            </svg>
+            <div class="legend"><i class="success"></i>Successful <i class="failed"></i>Failed <i class="blocked"></i>Stopped by protection</div>
+        </div>
+    </div>
+
+    <div class="grid-3">
+        <!-- Top attacking IPs -->
+        <div class="panel">
+            <div class="panel-title">Top Attacking IPs <small th:text="${week ? '(7 days)' : '(24 h)'}">(24 h)</small></div>
+            <div class="panel-body table-scroll">
+                <table class="list">
+                    <tr><th>IP / Location</th><th>Bad attempts</th></tr>
+                    <tr th:if="${#lists.isEmpty(topIps)}"><td colspan="2" class="no-data">No failed attempts.</td></tr>
+                    <tr th:each="r : ${topIps}">
+                        <td><th:block th:replace="~{fragments :: ip(${r.ip}, ${r.info}, true)}"></th:block></td>
+                        <td class="meter-cell">
+                            <b th:text="${r.count}">5</b>
+                            <svg class="meter" viewBox="0 0 100 8" preserveAspectRatio="none">
+                                <rect class="track" x="0" y="0" width="100" height="8"></rect>
+                                <rect class="fill" x="0" y="0" height="8" th:attr="width=${r.percent}"></rect>
+                            </svg>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Most targeted accounts -->
+        <div class="panel">
+            <div class="panel-title">Most Targeted Accounts <small th:text="${week ? '(7 days)' : '(24 h)'}">(24 h)</small></div>
+            <div class="panel-body table-scroll">
+                <table class="list">
+                    <tr><th>Email</th><th>Failures</th></tr>
+                    <tr th:if="${#lists.isEmpty(topAccounts)}"><td colspan="2" class="no-data">No failed attempts.</td></tr>
+                    <tr th:each="r : ${topAccounts}">
+                        <td><a th:href="@{/admin/attempts(email=${r.email})}" th:text="${r.email}">user@example.com</a></td>
+                        <td class="meter-cell">
+                            <b th:text="${r.count}">5</b>
+                            <svg class="meter" viewBox="0 0 100 8" preserveAspectRatio="none">
+                                <rect class="track" x="0" y="0" width="100" height="8"></rect>
+                                <rect class="fill" x="0" y="0" height="8" th:attr="width=${r.percent}"></rect>
+                            </svg>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Countries -->
+        <div class="panel">
+            <div class="panel-title">Attempts by Country <small th:text="${week ? '(7 days)' : '(24 h)'}">(24 h)</small></div>
+            <div class="panel-body table-scroll">
+                <table class="list">
+                    <tr><th>Country</th><th>Attempts</th></tr>
+                    <tr th:if="${#lists.isEmpty(countries)}"><td colspan="2" class="no-data">No attempts yet.</td></tr>
+                    <tr th:each="c : ${countries}">
+                        <td><span th:text="${c.flag}"></span> <span th:text="${c.name}">India</span></td>
+                        <td class="meter-cell">
+                            <b th:text="${c.count}">5</b>
+                            <svg class="meter" viewBox="0 0 100 8" preserveAspectRatio="none">
+                                <rect class="track" x="0" y="0" width="100" height="8"></rect>
+                                <rect class="fill-blue" x="0" y="0" height="8" th:attr="width=${c.percent}"></rect>
+                            </svg>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <!-- Open alerts -->
+        <div class="panel">
+            <div class="panel-title">Open Alerts <span class="right"><a th:href="@{/admin/alerts}">all alerts</a></span></div>
+            <div class="panel-body table-scroll">
+                <table class="list" id="alerts-table">
+                    <tr><th>Severity</th><th>Alert</th><th></th></tr>
+                    <tr th:if="${#lists.isEmpty(recentAlerts)}"><td colspan="3" class="no-data">No open alerts. All quiet.</td></tr>
+                    <tr th:each="al : ${recentAlerts}">
+                        <td>
+                            <span class="label" th:classappend="'label-' + ${#strings.toLowerCase(al.severity.name())}"
+                                  th:text="${al.severity.name()}">HIGH</span>
+                            <div class="sub" th:text="${@dates.format(al.createdAt)}">-</div>
+                        </td>
+                        <td class="wrap">
+                            <b th:text="${al.type.label}">Credential stuffing</b>
+                            <span class="tag tag-sim" th:if="${al.simulated}">SIMULATED</span>
+                            <div class="sub wrap" th:text="${al.message}">message</div>
+                        </td>
+                        <td>
+                            <form th:action="@{/admin/alerts/{id}/ack(id=${al.id})}" method="post" class="inline-form">
+                                <input type="hidden" name="back" value="overview">
+                                <button type="submit" class="btn btn-sm btn-grey" title="Mark as handled">Done</button>
+                            </form>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Currently blocked -->
+        <div class="panel">
+            <div class="panel-title">Blocked Right Now <span class="right"><a th:href="@{/admin/protection}">blocks &amp; locks</a></span></div>
+            <div class="panel-body table-scroll">
+                <table class="list" id="blocked-table">
+                    <tr><th>IP Address</th><th>Remaining</th><th>Reason</th></tr>
+                    <tr th:if="${#lists.isEmpty(activeBlocks)}"><td colspan="3" class="no-data">No IP addresses are blocked.</td></tr>
+                    <tr th:each="b : ${activeBlocks}">
+                        <td>
+                            <a class="mono" th:href="@{/admin/ip(ip=${b.ipAddress()})}" th:text="${b.ipAddress()}">ip</a>
+                            <span class="tag tag-sim" th:if="${b.simulated()}">SIM</span>
+                        </td>
+                        <td th:text="${b.remainingTime()}">-</td>
+                        <td class="wrap">
+                            <span th:text="${b.reason()}">reason</span>
+                            <span class="tag tag-danger" th:if="${b.level() > 1}" th:text="'Repeat #' + ${b.level()}">Repeat</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live feed -->
+    <div class="panel">
+        <div class="panel-title">Live Feed <small>(newest first)</small>
+            <span class="right">
+                <label class="live-toggle"><input type="checkbox" id="live" checked> auto-update every 5 seconds</label>
+            </span>
+        </div>
+        <div class="panel-body table-scroll">
+            <table class="list" id="feed-table" th:attr="data-last-id=${lastId},data-url=@{/admin/api/feed}">
+                <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>IP / Location</th>
+                    <th>Email</th>
+                    <th>Result</th>
+                    <th>Device</th>
+                </tr>
+                </thead>
+                <tbody id="feed-body">
+                <tr th:if="${#lists.isEmpty(feed)}" id="feed-empty"><td colspan="5" class="no-data">No login attempts yet.</td></tr>
+                <tr th:each="a : ${feed}">
+                    <td th:text="${@dates.format(a.attemptedAt)}">-</td>
+                    <td><th:block th:replace="~{fragments :: ip(${a.ipAddress}, ${info[a.ipAddress]}, true)}"></th:block></td>
+                    <td th:text="${a.attemptedEmail != null ? a.attemptedEmail : '-'}">user@example.com</td>
+                    <td><th:block th:replace="~{fragments :: outcome(${a})}"></th:block></td>
+                    <td th:text="${a.deviceLabel}">Chrome on Windows</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="panel-note">Last updated: <span id="generated-at" th:text="${@dates.format(generatedAt)}">-</span>
+            (<span th:text="${@dates.zoneName()}">UTC</span>) - <a th:href="@{/admin/attempts}">full attempt log</a></div>
+    </div>
+
+    <div class="grid-2">
+        <!-- Rules -->
+        <div class="panel">
+            <div class="panel-title">Active Protection Rules</div>
+            <div class="panel-body">
+                <ol class="rules">
+                    <li><b th:text="${maxAttempts}">5</b> failures for one account from one IP in <span th:text="${windowMinutes}">10</span> min
+                        &rarr; that account is locked <i>for that IP only</i> for <span th:text="${blockMinutes}">15</span> min.</li>
+                    <li><b th:text="${ipMaxAccounts}">4</b> different accounts failing from one IP &rarr; <b>IP blocked</b> (credential stuffing).</li>
+                    <li><b th:text="${ipMaxFailures}">10</b> failures from one IP for any accounts &rarr; <b>IP blocked</b>.</li>
+                    <li><b th:text="${accountMaxFailures}">8</b> failures on one account from <span th:text="${accountMinIps}">3</span>+ IPs
+                        &rarr; account locked for <i>new</i> IPs (the owner's usual IPs still work).</li>
+                    <li>Repeat offenders: next blocks last <span th:text="${#strings.listJoin(repeatBlocks, ', then ')}">1 h, 24 h</span>.</li>
+                    <li>Correct password but risky (after failures, new country/device, VPN, script) &rarr; alert.</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Connection check -->
+        <div class="panel">
+            <div class="panel-title">Connection Check <small>(is the visitor IP detected correctly?)</small></div>
+            <div class="panel-body">
+                <table class="kv" id="connection-check">
+                    <tr><td>Your IP as seen by LAMS</td><td><b class="mono" id="detected-ip" th:text="${yourIp}">127.0.0.1</b>
+                        <div class="sub" th:text="${yourIpInfo.flag + ' ' + yourIpInfo.locationLabel}">-</div></td></tr>
+                    <tr><td>Found using</td><td th:text="${ipMethod}">Direct connection</td></tr>
+                    <tr><td>Connection address</td><td class="mono" th:text="${connectionIp}">127.0.0.1</td></tr>
+                    <tr><td>Running on Render</td><td th:text="${onRender ? 'Yes' : 'No'}">No</td></tr>
+                    <tr th:each="h : ${ipHeaders}"><td th:text="${h.key}">X-Forwarded-For</td><td class="mono wrap" th:text="${h.value}">-</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: footer}"></div>
+<script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>

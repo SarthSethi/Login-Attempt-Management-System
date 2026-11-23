@@ -1,0 +1,63 @@
+@startuml
+!include _style.iuml
+!pragma layout smetana
+title System Architecture - Layered Spring Boot Application (v2)
+
+actor "Browser\n(User / Admin)" as B
+cloud "Cloudflare + Render proxy\n(sets CF-Connecting-IP)" as CF
+
+rectangle "Spring Boot Application" {
+  rectangle "Security Layer - Spring Security filter chain" as SEC {
+    component "CsrfFilter" as CSRF
+    component "LoginProtectionFilter" as LPF
+    component "UsernamePassword\nAuthenticationFilter" as UPAF
+    component "LoginSuccessHandler /\nLoginFailureHandler" as H
+    component "ClientIpResolver" as CIR
+  }
+  rectangle "Presentation Layer" as PRES {
+    component "AuthController\nAccountController\nAdminController\nAdminActionController" as CTRL
+    component "Thymeleaf templates\n(HTML, CSS, SVG charts, JS)" as VIEW
+  }
+  rectangle "Service Layer" as SVC {
+    component "LoginProtectionService\n(rules 1-5, risk flags)" as LPS
+    component "BlockedIpService\nAccountLockService\nAllowlistService" as BLS
+    component "AlertService\nAdminAuditService" as ALS
+    component "StatsService\nSimulatorService\nSessionTracker" as OTH
+    component "UserService\nLoginAttemptService" as US
+    component "IpIntelService\nBreachedPasswordService\nUserAgentParser" as INT
+  }
+  rectangle "Data Access Layer - Spring Data JPA" as REPO {
+    component "8 repositories" as R
+  }
+}
+
+database "MySQL\nusers, login_attempts, blocked_ips,\naccount_locks, security_alerts,\nip_info, ip_allowlist, admin_actions" as DB
+cloud "ip-api.com\n(location)" as API1
+cloud "Pwned Passwords\n(breach check)" as API2
+
+B --> CF : HTTPS
+CF --> CSRF
+CSRF --> LPF
+LPF ..> CIR : visitor IP
+LPF ..> LPS : blocked or locked?
+LPF --> UPAF : allowed
+UPAF --> H : success / failure
+H --> LPS : apply rules
+LPS --> BLS
+LPS --> ALS
+LPS --> INT
+LPS --> US
+CSRF --> CTRL : page requests
+CTRL --> VIEW
+CTRL --> OTH
+CTRL --> BLS
+CTRL --> US
+BLS --> R
+ALS --> R
+US --> R
+OTH --> R
+INT --> R
+R --> DB
+INT ..> API1 : HTTP
+INT ..> API2 : HTTPS
+@enduml

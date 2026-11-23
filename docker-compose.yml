@@ -1,0 +1,48 @@
+# Local development database (MySQL) with a persistent volume.
+#
+#   cp .env.example .env        # then edit the passwords
+#   docker compose up -d        # starts ONLY MySQL; run the app with ./mvnw spring-boot:run
+#
+# Optional: run the app in Docker as well (builds the Dockerfile):
+#   docker compose --profile app up -d --build
+#
+# Values like ${DB_PASSWORD} are read from the .env file in this folder.
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: lams-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: login_monitoring_system
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      # Change MYSQL_HOST_PORT in .env if a local MySQL already uses 3306
+      - "${MYSQL_HOST_PORT:-3306}:3306"
+    volumes:
+      - lams-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  app:
+    profiles: ["app"]
+    build: .
+    container_name: lams-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      PORT: "8080"
+      SESSION_COOKIE_SECURE: "false"
+    ports:
+      - "8080:8080"
+
+volumes:
+  lams-mysql-data:

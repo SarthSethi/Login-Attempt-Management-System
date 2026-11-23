@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Attempt Log')}"></head>
+<body>
+<div th:replace="~{fragments :: header('admin', true)}"></div>
+
+<div class="wrapper wide page">
+    <div class="heading-row">
+        <h2 class="page-heading">Attempt Log</h2>
+        <a class="btn" th:href="@{/admin/attempts.csv(status=${statusFilter}, ip=${ipFilter}, email=${emailFilter})}">Download CSV</a>
+    </div>
+    <div th:replace="~{fragments :: adminNav('attempts')}"></div>
+
+    <!-- Search / filter -->
+    <form class="search-bar" th:action="@{/admin/attempts}" method="get" id="filter-form">
+        <label for="status">Status:</label>
+        <select id="status" name="status">
+            <option value="ALL" th:selected="${statusFilter == 'ALL'}">All</option>
+            <option th:each="o : ${outcomes}" th:value="${o.name()}" th:text="${o.name()}"
+                    th:selected="${statusFilter == o.name()}">SUCCESS</option>
+        </select>
+        <label for="ip">IP:</label>
+        <input type="text" id="ip" name="ip" maxlength="45" placeholder="e.g. 192.168.1.10" th:value="${ipFilter}">
+        <label for="email">Email:</label>
+        <input type="text" id="email" name="email" maxlength="150" placeholder="part of an email" th:value="${emailFilter}">
+        <button type="submit" class="btn">Search</button>
+        <a class="btn btn-grey" th:href="@{/admin/attempts}">Reset</a>
+    </form>
+    <div th:if="${ipFilterInvalid}" class="msg msg-error">Invalid IP address entered. The IP filter was ignored.</div>
+    <div th:if="${emailFilterInvalid}" class="msg msg-error">Invalid email search entered. The email filter was ignored.</div>
+
+    <div class="panel">
+        <div class="panel-title">Login Attempts
+            <small th:text="'(' + ${page.totalElements} + ' found, newest first)'">(100 found)</small></div>
+        <div class="panel-body table-scroll">
+            <table class="list" id="attempts-table">
+                <tr>
+                    <th>ID</th>
+                    <th>Date &amp; Time</th>
+                    <th>IP / Location</th>
+                    <th>Attempted Email</th>
+                    <th>Result</th>
+                    <th>Device</th>
+                    <th>Risk</th>
+                </tr>
+                <tr th:if="${#lists.isEmpty(attempts)}">
+                    <td colspan="7" class="no-data">No records found.</td>
+                </tr>
+                <tr th:each="a : ${attempts}">
+                    <td th:text="${a.id}">1</td>
+                    <td th:text="${@dates.format(a.attemptedAt)}">-</td>
+                    <td><th:block th:replace="~{fragments :: ip(${a.ipAddress}, ${info[a.ipAddress]}, true)}"></th:block></td>
+                    <td>
+                        <a th:if="${a.attemptedEmail != null}" th:href="@{/admin/attempts(email=${a.attemptedEmail})}"
+                           th:text="${a.attemptedEmail}">user@example.com</a>
+                        <span th:if="${a.attemptedEmail == null}">-</span>
+                    </td>
+                    <td><th:block th:replace="~{fragments :: outcome(${a})}"></th:block></td>
+                    <td>
+                        <span th:text="${a.deviceLabel}">Chrome on Windows</span>
+                        <div class="sub" th:text="${a.deviceType}">Desktop</div>
+                    </td>
+                    <td><th:block th:replace="~{fragments :: risk(${a})}"></th:block></td>
+                </tr>
+            </table>
+        </div>
+        <div class="pager" th:if="${page.totalPages > 1}">
+            <a th:if="${page.hasPrevious()}"
+               th:href="@{/admin/attempts(status=${statusFilter}, ip=${ipFilter}, email=${emailFilter}, page=${page.number - 1})}">&laquo; Newer</a>
+            Page <b th:text="${page.number + 1}">1</b> of <span th:text="${page.totalPages}">3</span>
+            <a th:if="${page.hasNext()}"
+               th:href="@{/admin/attempts(status=${statusFilter}, ip=${ipFilter}, email=${emailFilter}, page=${page.number + 1})}">Older &raquo;</a>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: footer}"></div>
+<script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>

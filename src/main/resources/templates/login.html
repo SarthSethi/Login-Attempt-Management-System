@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Login')}"></head>
+<body>
+<div th:replace="~{fragments :: header('public', false)}"></div>
+
+<div class="wrapper page">
+    <div class="panel form-panel">
+        <div class="panel-title">Sign in</div>
+        <div class="panel-body">
+
+            <!-- Status read from the database (stays the same after a refresh) -->
+            <div th:if="${status.state.name() == 'IP_BANNED'}" class="alert alert-danger" id="login-alert">
+                <b>Access from your IP address has been blocked by the administrator.</b>
+            </div>
+
+            <div th:if="${status.state.name() == 'IP_BLOCKED'}" class="alert alert-danger" id="login-alert">
+                <b>Your IP address has been temporarily blocked.</b>
+                Too many failed sign-ins came from your network.
+                Try again in <span class="countdown" th:attr="data-seconds=${status.secondsLeft}"
+                                   th:text="${status.timeLeft()}">15:00</span>.
+            </div>
+
+            <div th:if="${status.state.name() == 'ACCOUNT_LOCKED'}" class="alert alert-warning" id="login-alert">
+                <b>Sign-in to <span th:text="${status.email}">user@example.com</span> is paused on this network.</b>
+                Too many wrong passwords. Try again in
+                <span class="countdown" th:attr="data-seconds=${status.secondsLeft}" th:text="${status.timeLeft()}">15:00</span>
+                or use a different account.
+            </div>
+
+            <div th:if="${status.state.name() == 'ACCOUNT_UNDER_ATTACK'}" class="alert alert-warning" id="login-alert">
+                <b>Sign-in to <span th:text="${status.email}">user@example.com</span> is paused for new networks.</b>
+                This account is being attacked from several places. Try again in
+                <span class="countdown" th:attr="data-seconds=${status.secondsLeft}" th:text="${status.timeLeft()}">15:00</span>
+                or sign in from a network you have used before.
+            </div>
+
+            <div th:if="${status.state.name() == 'FAILURES'}" class="alert alert-error" id="login-alert">
+                <b th:if="${param.error}">Invalid email or password.</b>
+                <b th:unless="${param.error}">Recent failed sign-ins for <span th:text="${status.email}">email</span>.</b>
+                <div class="attempts">
+                    <span class="dots">
+                        <i th:each="i : ${#numbers.sequence(1, status.accountLimit)}"
+                           th:classappend="${i <= status.accountFailures} ? 'used'"></i>
+                    </span>
+                    Attempt <b th:text="${status.accountFailures}">2</b> of <span th:text="${status.accountLimit}">5</span> -
+                    <span th:text="${status.accountAttemptsLeft()}">3</span>
+                    left before this account is paused for <span th:text="${blockMinutes}">15</span> minutes.
+                </div>
+            </div>
+
+            <div th:if="${status.state.name() == 'CLEAR' and param.error != null}" class="alert alert-error">
+                <b>Invalid email or password.</b>
+            </div>
+            <div th:if="${status.state.name() == 'CLEAR' and (param.blocked != null or param.locked != null)}" class="alert alert-success">
+                The block has ended. You can sign in again.
+            </div>
+
+            <div th:if="${status.ipWarning and !status.blocked()}" class="alert alert-warning">
+                <b>Warning for your network:</b>
+                <span th:text="${status.ipFailures}">6</span> failed sign-ins in the last
+                <span th:text="${windowMinutes}">10</span> minutes
+                (<span th:text="${status.ipAccounts}">3</span> different accounts).
+                The network is blocked at <span th:text="${status.ipFailureLimit}">10</span> failures
+                or <span th:text="${status.ipAccountLimit}">4</span> accounts.
+            </div>
+
+            <div th:if="${param.disabled}" class="alert alert-error">Your account is disabled. Please contact the administrator.</div>
+            <div th:if="${param.missing}" class="alert alert-error">Please enter both your email and password.</div>
+            <div th:if="${param.logout}" class="alert alert-success">You have been logged out.</div>
+            <div th:if="${param.expired}" class="alert alert-warning">Your session was ended from another device.</div>
+            <div th:if="${param.retry}" class="alert alert-warning"><b>The page had expired, so your password was not checked.</b> Please enter it again.</div>
+            <div th:if="${param.timeout}" class="alert alert-warning">Your session has ended. Please sign in again.</div>
+            <div th:if="${param.registered}" class="alert alert-success">Registration successful. Please sign in.</div>
+
+            <form th:action="@{/login}" method="post" id="login-form">
+                <div class="field">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" maxlength="150" required autocomplete="username"
+                           th:value="${lastEmail}" th:attrappend="autofocus=${lastEmail == null ? 'autofocus' : null}">
+                </div>
+                <div class="field">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" maxlength="128" required
+                           autocomplete="current-password" th:attrappend="autofocus=${lastEmail != null ? 'autofocus' : null}">
+                </div>
+                <button type="submit" class="btn btn-block" id="login-button"
+                        th:disabled="${status.blocked()}">Sign in</button>
+            </form>
+
+            <p class="below-form">
+                <a th:if="${lastEmail != null}" th:href="@{/login(clear='')}">Use a different email</a>
+                <span th:if="${lastEmail != null}" class="muted"> | </span>
+                New user? <a th:href="@{/register}">Create an account</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: footer}"></div>
+<script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>

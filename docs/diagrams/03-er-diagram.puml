@@ -1,0 +1,108 @@
+@startuml
+!include _style.iuml
+!pragma layout smetana
+hide circle
+title ER Diagram - LAMS database (v2)
+
+entity "users" as users {
+  * id : BIGINT <<PK>>
+  --
+  * name : VARCHAR(100)
+  * email : VARCHAR(150) <<UNIQUE>>
+  * password_hash : VARCHAR(255)
+  * role : VARCHAR(20)
+  * enabled : BOOLEAN
+  * created_at : DATETIME
+}
+
+entity "login_attempts" as attempts {
+  * id : BIGINT <<PK>>
+  --
+  * ip_address : VARCHAR(45)
+    attempted_email : VARCHAR(150)
+  * outcome : VARCHAR(20)
+    reason : VARCHAR(30)
+  * attempted_at : DATETIME
+    user_agent, browser, os, device_type
+    risk_flags : VARCHAR(150)
+    risk_score : INT
+    simulated, reported : BIT
+}
+
+entity "blocked_ips" as blocked {
+  * id : BIGINT <<PK>>
+  --
+  * ip_address : VARCHAR(45)
+  * blocked_at, expires_at : DATETIME
+  * reason : VARCHAR(255)
+    source : VARCHAR(20)
+    block_level : INT
+    created_by, lifted_by : VARCHAR(150)
+    lifted_at : DATETIME
+    simulated : BIT
+}
+
+entity "account_locks" as locks {
+  * id : BIGINT <<PK>>
+  --
+  * email : VARCHAR(150)
+    ip_address : VARCHAR(45)
+  * lock_type : VARCHAR(20)
+  * locked_at, expires_at : DATETIME
+  * reason : VARCHAR(255)
+    lifted_at, lifted_by, simulated
+}
+
+entity "security_alerts" as alerts {
+  * id : BIGINT <<PK>>
+  --
+  * alert_type : VARCHAR(30)
+  * severity : VARCHAR(10)
+    ip_address, email
+  * message : VARCHAR(500)
+  * created_at : DATETIME
+  * acknowledged : BIT
+    acknowledged_by, acknowledged_at
+}
+
+entity "ip_info" as info {
+  * ip_address : VARCHAR(45) <<PK>>
+  --
+  * status : VARCHAR(20)
+    country, country_code, region, city
+    isp, org, asn
+    is_proxy, is_hosting, is_mobile
+  * looked_up_at : DATETIME
+}
+
+entity "ip_allowlist" as allow {
+  * id : BIGINT <<PK>>
+  --
+  * cidr : VARCHAR(50)
+    note, created_by
+  * created_at : DATETIME
+}
+
+entity "admin_actions" as audit {
+  * id : BIGINT <<PK>>
+  --
+  * admin_email : VARCHAR(150)
+  * action : VARCHAR(60)
+    target, detail
+  * created_at : DATETIME
+}
+
+users ||..o{ attempts : "email =\nattempted_email"
+users ||..o{ locks : "email"
+attempts }o..|| info : "ip_address"
+attempts }o..o{ blocked : "ip_address"
+blocked }o..o{ allow : "never blocks\ntrusted ranges"
+attempts }o..o{ alerts : "raises"
+users ||..o{ audit : "admin_email"
+
+note bottom of attempts
+  All links are logical (no foreign keys):
+  attempts and locks are stored even for emails
+  without an account and IPs never blocked.
+end note
+@enduml

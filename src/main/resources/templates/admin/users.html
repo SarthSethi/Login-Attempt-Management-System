@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Users')}"></head>
+<body>
+<div th:replace="~{fragments :: header('admin', true)}"></div>
+
+<div class="wrapper wide page">
+    <h2 class="page-heading">Users</h2>
+    <div th:replace="~{fragments :: adminNav('users')}"></div>
+    <div th:replace="~{fragments :: flash}"></div>
+
+    <div class="panel">
+        <div class="panel-title">Registered Accounts <small th:text="'(' + ${#lists.size(rows)} + ')'">(3)</small></div>
+        <div class="panel-body table-scroll">
+            <table class="list" id="users-table">
+                <tr><th>Name / Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Failures (24 h)</th><th>Actions</th></tr>
+                <tr th:if="${#lists.isEmpty(rows)}"><td colspan="6" class="no-data">No users.</td></tr>
+                <tr th:each="r : ${rows}">
+                    <td>
+                        <b th:text="${r.user().name}">Name</b>
+                        <div class="sub"><a th:href="@{/admin/attempts(email=${r.user().email})}" th:text="${r.user().email}">email</a></div>
+                    </td>
+                    <td th:text="${r.user().role.name()}">USER</td>
+                    <td>
+                        <span th:if="${r.user().enabled}" class="tag tag-ok">ENABLED</span>
+                        <span th:if="${!r.user().enabled}" class="tag tag-danger">DISABLED</span>
+                        <span th:if="${r.locked()}" class="tag tag-warn">LOCKED</span>
+                    </td>
+                    <td>
+                        <th:block th:if="${r.lastLogin() != null}">
+                            <span th:text="${@dates.format(r.lastLogin().attemptedAt)}">-</span>
+                            <div class="sub"><a class="mono" th:href="@{/admin/ip(ip=${r.lastLogin().ipAddress})}"
+                                                th:text="${r.lastLogin().ipAddress}">ip</a></div>
+                        </th:block>
+                        <span th:if="${r.lastLogin() == null}" class="muted">never</span>
+                    </td>
+                    <td th:classappend="${r.failures24h() > 0} ? 'red'" th:text="${r.failures24h()}">0</td>
+                    <td class="actions-cell">
+                        <form th:if="${r.user().enabled}" th:action="@{/admin/users/{id}/disable(id=${r.user().id})}" method="post"
+                              data-confirm="Disable this account and sign it out everywhere?">
+                            <button type="submit" class="btn btn-sm btn-red">Disable</button>
+                        </form>
+                        <form th:if="${!r.user().enabled}" th:action="@{/admin/users/{id}/enable(id=${r.user().id})}" method="post">
+                            <button type="submit" class="btn btn-sm">Enable</button>
+                        </form>
+                        <form th:if="${r.locked()}" th:action="@{/admin/users/{id}/unlock(id=${r.user().id})}" method="post">
+                            <button type="submit" class="btn btn-sm">Unlock</button>
+                        </form>
+                        <form th:action="@{/admin/users/{id}/signout(id=${r.user().id})}" method="post">
+                            <button type="submit" class="btn btn-sm btn-grey">Sign out</button>
+                        </form>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="panel-note">Disabling an account signs it out on every device at once. Password hashes are never shown.</div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: footer}"></div>
+<script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>

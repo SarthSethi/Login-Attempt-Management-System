@@ -1,0 +1,49 @@
+@startuml
+!include _style.iuml
+title Activity Diagram - Login Processing and Detection Rules (v2)
+
+start
+:User submits login form (POST /login);
+if (Valid CSRF token?) then (no)
+  :403 Forbidden (nothing recorded);
+  stop
+else (yes)
+endif
+:Find visitor IP (ClientIpResolver);
+if (IP blocked?) then (yes)
+  :Save BLOCKED; "IP blocked" message;
+  stop
+else (no)
+endif
+if (Account locked for this IP, or\naccount under attack and IP new?) then (yes)
+  :Save BLOCKED; "sign-in paused" message;
+  stop
+else (no)
+endif
+:Check email + password (BCrypt);
+if (Correct?) then (yes)
+  :Look up IP location;
+  :Compute risk flags;
+  :Save SUCCESS with flags;
+  if (Risk score >= 2?) then (yes)
+    :Raise SUSPICIOUS_LOGIN alert;
+  endif
+  :Redirect to My Security / Admin;
+  stop
+else (no)
+endif
+:Save FAILED (+ reason, device);
+if (Rule 1: 5 failures\nemail + IP in 10 min?) then (yes)
+  :Lock email for this IP (15 min); alert;
+endif
+if (IP trusted?) then (no)
+  if (Rule 2: 4 accounts or\nRule 3: 10 failures from IP?) then (yes)
+    :Block IP for 15 min / 1 h / 24 h\n(Rule 5: repeat offender); alert;
+  endif
+endif
+if (Rule 4: 8 failures for email\nfrom 3+ IPs?) then (yes)
+  :Lock email for NEW IPs (15 min); alert;
+endif
+:Show error / "N attempts left" /\n"paused" / "blocked" message;
+stop
+@enduml

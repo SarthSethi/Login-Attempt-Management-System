@@ -1,0 +1,39 @@
+@startuml
+!include _style.iuml
+autonumber
+title Sequence Diagram - Wrong Password and the Detection Rules
+
+actor "Browser" as B
+participant "LoginProtection\nFilter" as LPF
+participant "UsernamePassword\nAuthenticationFilter" as UPAF
+participant "LoginFailure\nHandler" as LFH
+participant "LoginProtection\nService" as LPS
+participant "AccountLock /\nBlockedIp services" as BLS
+participant "AlertService" as AS
+database "MySQL" as DB
+
+B -> LPF : POST /login (after CSRF check)
+LPF -> LPS : checkBeforeLogin(ip, email)
+LPS -> DB : active block for ip?\nactive lock for email?
+DB --> LPS : none
+LPS --> LPF : allowed
+LPF -> UPAF : continue filter chain
+UPAF -> UPAF : load user, BCrypt compare\n-> does not match
+UPAF -> LFH : onAuthenticationFailure()
+LFH -> LPS : onFailure(ip, email, reason)
+activate LPS
+note right of LPS : one at a time,\ninside one DB transaction
+LPS -> DB : INSERT login_attempts (FAILED, reason, device)
+LPS -> DB : Rule 1: COUNT failures email+ip (10 min)
+LPS -> DB : Rules 2/3: COUNT DISTINCT emails / failures from ip
+LPS -> DB : Rule 4: COUNT failures, DISTINCT ips for email
+alt a limit is reached
+  LPS -> BLS : lockPair / blockAutomatically / lockAccount
+  BLS -> DB : INSERT account_locks / blocked_ips\n(escalated length for repeat IPs)
+  LPS -> AS : raise(type, severity, message)
+  AS -> DB : INSERT security_alerts
+end
+LPS --> LFH : FailureResult(action, until, attemptsLeft)
+deactivate LPS
+LFH --> B : redirect /login?error[&left=N] | ?locked&wait=M | ?blocked&wait=M
+@enduml

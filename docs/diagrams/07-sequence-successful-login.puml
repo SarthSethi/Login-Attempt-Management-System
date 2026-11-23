@@ -1,0 +1,33 @@
+@startuml
+!include _style.iuml
+autonumber
+title Sequence Diagram - Successful Login with Risk Check
+
+actor "Browser" as B
+participant "LoginProtection\nFilter" as LPF
+participant "UsernamePassword\nAuthenticationFilter" as UPAF
+participant "LoginSuccess\nHandler" as LSH
+participant "LoginProtection\nService" as LPS
+participant "IpIntelService" as INT
+participant "AlertService" as AS
+participant "SessionTracker" as ST
+database "MySQL" as DB
+
+B -> LPF : POST /login (after CSRF check)
+LPF -> LPF : not blocked, not locked
+LPF -> UPAF : continue
+UPAF -> UPAF : load user, BCrypt match,\nchange session id
+UPAF -> LSH : onAuthenticationSuccess()
+LSH -> LPS : onSuccess(ip, email, user agent)
+LPS -> INT : lookupNow(ip)
+INT -> DB : cached ip_info? (else ask ip-api.com)
+INT --> LPS : country, ISP, VPN / hosting
+LPS -> DB : earlier successful logins, recent failures
+LPS -> LPS : risk flags: after failures, new country,\nnew device, VPN, automated tool
+LPS -> DB : INSERT login_attempts (SUCCESS, flags, score)
+opt score >= 2
+  LPS -> AS : raise(SUSPICIOUS_LOGIN, severity)
+end
+LSH -> ST : register(session, device, location)
+LSH --> B : redirect /dashboard (USER) or /admin (ADMIN)
+@enduml

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('IP Details')}"></head>
+<body>
+<div th:replace="~{fragments :: header('admin', true)}"></div>
+
+<div class="wrapper wide page">
+    <div th:if="${invalidIp != null}">
+        <h2 class="page-heading">IP Details</h2>
+        <div th:replace="~{fragments :: adminNav('')}"></div>
+        <div class="msg msg-error">"<span th:text="${invalidIp}">x</span>" is not a valid IP address.</div>
+    </div>
+
+    <th:block th:if="${invalidIp == null}">
+    <h2 class="page-heading">IP <span class="mono" th:text="${ip}">203.0.113.5</span>
+        <span th:text="${ipInfo.flag}"></span>
+        <span class="label label-failed" th:if="${activeBlock != null}">BLOCKED</span>
+        <span class="tag tag-ok" th:if="${allowlisted}">TRUSTED</span>
+        <span class="tag tag-ok" th:if="${isMyIp}">YOUR IP</span>
+    </h2>
+    <div th:replace="~{fragments :: adminNav('')}"></div>
+    <div th:replace="~{fragments :: flash}"></div>
+
+    <div class="grid-2">
+        <div class="panel">
+            <div class="panel-title">Where is it?</div>
+            <div class="panel-body">
+                <table class="kv">
+                    <tr><td>Location</td><td th:text="${ipInfo.flag + ' ' + ipInfo.locationLabel}">-</td></tr>
+                    <tr th:if="${ipInfo.region != null}"><td>Region</td><td th:text="${ipInfo.region}">-</td></tr>
+                    <tr><td>Internet provider (ISP)</td><td th:text="${ipInfo.isp != null ? ipInfo.isp : '-'}">-</td></tr>
+                    <tr th:if="${ipInfo.org != null and ipInfo.org != ipInfo.isp}"><td>Organisation</td><td th:text="${ipInfo.org}">-</td></tr>
+                    <tr th:if="${ipInfo.asn != null}"><td>Network (AS)</td><td th:text="${ipInfo.asn}">-</td></tr>
+                    <tr><td>Type</td><td>
+                        <span class="tag tag-warn" th:if="${ipInfo.proxy}">Proxy / VPN / Tor</span>
+                        <span class="tag tag-warn" th:if="${ipInfo.hosting}">Data centre / hosting</span>
+                        <span class="tag" th:if="${ipInfo.mobile}">Mobile network</span>
+                        <span th:if="${!ipInfo.proxy and !ipInfo.hosting and !ipInfo.mobile}"
+                              th:text="${ipInfo.status.name() == 'OK' ? 'Home / office connection' : ipInfo.locationLabel}">-</span>
+                        <span class="tag tag-sim" th:if="${ipInfo.status.name() == 'SIMULATED'}">SIMULATED DATA</span>
+                    </td></tr>
+                </table>
+                <form th:action="@{/admin/ip/refresh}" method="post" class="inline-form">
+                    <input type="hidden" name="ip" th:value="${ip}">
+                    <button type="submit" class="btn btn-sm btn-grey">Look up location again</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Activity</div>
+            <div class="panel-body">
+                <table class="kv">
+                    <tr><td>Total attempts</td><td th:text="${total}">0</td></tr>
+                    <tr><td>Failed</td><td class="red" th:text="${failed}">0</td></tr>
+                    <tr><td>Successful</td><td class="green" th:text="${success}">0</td></tr>
+                    <tr><td>Stopped by protection</td><td class="orange" th:text="${blocked}">0</td></tr>
+                    <tr><td>Different accounts tried</td><td th:text="${#lists.size(emailsTried)}">0</td></tr>
+                    <tr><td>First seen</td><td th:text="${@dates.format(firstSeen)}">-</td></tr>
+                    <tr><td>Last seen</td><td th:text="${@dates.format(lastSeen)}">-</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="panel">
+        <div class="panel-title">Actions</div>
+        <div class="panel-body">
+            <div th:if="${activeBlock != null}" class="msg msg-warning">
+                Blocked until <b th:text="${activeBlock.permanent ? 'permanently' : @dates.format(activeBlock.expiresAt)}">-</b>
+                - <span th:text="${activeBlock.reason}">reason</span>
+            </div>
+            <div class="form-row">
+                <form th:if="${activeBlock != null}" th:action="@{/admin/ip/unblock}" method="post" class="inline-form">
+                    <input type="hidden" name="ip" th:value="${ip}">
+                    <input type="hidden" name="back" value="ip">
+                    <button type="submit" class="btn">Unblock now</button>
+                </form>
+                <form th:if="${!isMyIp and !allowlisted}" th:action="@{/admin/ip/block}" method="post" class="form-row">
+                    <input type="hidden" name="ip" th:value="${ip}">
+                    <input type="hidden" name="back" value="ip">
+                    <div class="field">
+                        <label for="duration">Block for</label>
+                        <select id="duration" name="duration">
+                            <option value="1h">1 hour</option>
+                            <option value="24h" selected>24 hours</option>
+                            <option value="7d">7 days</option>
+                            <option value="permanent">Permanently (ban)</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="reason">Reason</label>
+                        <input type="text" id="reason" name="reason" maxlength="150" placeholder="optional">
+                    </div>
+                    <button type="submit" class="btn btn-red" th:text="${activeBlock != null ? 'Replace block' : 'Block IP'}">Block IP</button>
+                </form>
+                <form th:if="${!allowlisted}" th:action="@{/admin/allowlist/add}" method="post" class="inline-form">
+                    <input type="hidden" name="cidr" th:value="${ip}">
+                    <input type="hidden" name="note" value="Added from the IP page">
+                    <input type="hidden" name="back" value="ip">
+                    <button type="submit" class="btn btn-grey">Mark as trusted</button>
+                </form>
+            </div>
+            <p class="small-text" th:if="${isMyIp}">This is your own IP address.</p>
+            <p class="small-text" th:if="${allowlisted}">This IP is on the trusted list.</p>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="panel">
+            <div class="panel-title">Accounts Tried From This IP</div>
+            <div class="panel-body table-scroll">
+                <table class="list">
+                    <tr><th>Email</th><th>Attempts</th></tr>
+                    <tr th:if="${#lists.isEmpty(emailsTried)}"><td colspan="2" class="no-data">None.</td></tr>
+                    <tr th:each="e : ${emailsTried}">
+                        <td><a th:href="@{/admin/attempts(email=${e.key()})}" th:text="${e.key()}">user@example.com</a></td>
+                        <td th:text="${e.count()}">1</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Block History</div>
+            <div class="panel-body table-scroll">
+                <table class="list">
+                    <tr><th>Blocked At</th><th>Until</th><th>Status</th><th>Reason</th></tr>
+                    <tr th:if="${#lists.isEmpty(blockHistory)}"><td colspan="4" class="no-data">Never blocked.</td></tr>
+                    <tr th:each="b : ${blockHistory}">
+                        <td th:text="${@dates.format(b.blockedAt())}">-</td>
+                        <td th:text="${b.permanent() ? 'Permanent' : @dates.format(b.expiresAt())}">-</td>
+                        <td><span class="label" th:classappend="'label-' + ${#strings.toLowerCase(b.status())}"
+                                  th:text="${b.status()}">ACTIVE</span></td>
+                        <td class="wrap" th:text="${b.reason()}">-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel" th:if="${!#lists.isEmpty(alerts)}">
+        <div class="panel-title">Alerts About This IP</div>
+        <div class="panel-body table-scroll">
+            <table class="list">
+                <tr><th>Time</th><th>Severity</th><th>Alert</th></tr>
+                <tr th:each="al : ${alerts}">
+                    <td th:text="${@dates.format(al.createdAt)}">-</td>
+                    <td><span class="label" th:classappend="'label-' + ${#strings.toLowerCase(al.severity.name())}"
+                              th:text="${al.severity.name()}">HIGH</span></td>
+                    <td class="wrap"><b th:text="${al.type.label}">type</b> - <span th:text="${al.message}">message</span></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">Latest Attempts From This IP <small>(last 50)</small></div>
+        <div class="panel-body table-scroll">
+            <table class="list">
+                <tr><th>Date &amp; Time</th><th>Email</th><th>Result</th><th>Device</th><th>Risk</th></tr>
+                <tr th:if="${#lists.isEmpty(attempts)}"><td colspan="5" class="no-data">No attempts.</td></tr>
+                <tr th:each="a : ${attempts}">
+                    <td th:text="${@dates.format(a.attemptedAt)}">-</td>
+                    <td th:text="${a.attemptedEmail != null ? a.attemptedEmail : '-'}">-</td>
+                    <td><th:block th:replace="~{fragments :: outcome(${a})}"></th:block></td>
+                    <td th:text="${a.deviceLabel}">-</td>
+                    <td><th:block th:replace="~{fragments :: risk(${a})}"></th:block></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    </th:block>
+</div>
+
+<div th:replace="~{fragments :: footer}"></div>
+<script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>

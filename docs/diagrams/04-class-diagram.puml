@@ -1,0 +1,116 @@
+@startuml
+!include _style.iuml
+!pragma layout smetana
+skinparam classAttributeIconSize 0
+title Class Diagram - Main Classes (v2)
+
+package "security" {
+  class LoginProtectionFilter <<OncePerRequestFilter>> {
+    # doFilterInternal(request, response, chain)
+  }
+  class ClientIpResolver {
+    + resolve(request) : String
+    + resolveDetailed(request) : Resolution
+    + {static} normalize(value) : String
+  }
+  class LoginFailureHandler <<AuthenticationFailureHandler>> {
+    + onAuthenticationFailure(...)
+  }
+  class LoginSuccessHandler <<AuthenticationSuccessHandler>> {
+    + onAuthenticationSuccess(...)
+  }
+}
+
+package "service" {
+  class LoginProtectionService {
+    - failureLock : ReentrantLock
+    + checkBeforeLogin(ip, email) : Optional<Denial>
+    + recordDenied(context, denial)
+    + onFailure(context, reason) : FailureResult
+    + onSuccess(context) : LoginAttempt
+  }
+  class BlockedIpService {
+    + findActiveBlock(ip)
+    + blockAutomatically(ip, reason, simulated)
+    + blockManually(ip, duration, reason, source, by)
+    + unblock(ip, by) : int
+  }
+  class AccountLockService {
+    + lockPair(email, ip, reason)
+    + lockAccount(email, reason)
+    + activeLocks(email)
+    + lift(id, by)
+  }
+  class AlertService {
+    + raise(type, severity, ip, email, message)
+    + acknowledge(id, by)
+  }
+  class AllowlistService {
+    + isAllowlisted(ip) : boolean
+    + add(cidr, note, by)
+  }
+  class LoginAttemptService {
+    + record(context, outcome, reason, flags)
+    + activityFor(email, max)
+    + search(outcome, ip, email, page, size)
+  }
+  class SessionTracker {
+    + register(sessionId, user, attempt, location)
+    + sessionsOf(user, currentId)
+    + expireOthers(user, currentId) : int
+  }
+  class SimulatorService {
+    + run(scenario, target) : Result
+    + clear() : int
+  }
+}
+
+package "service.intel" {
+  class IpIntelService {
+    + describe(ip) : IpInfo
+    + lookupNow(ip) : IpInfo
+    + lookupRecentAddresses()  <<@Scheduled>>
+  }
+  class BreachedPasswordService {
+    + breachCount(password) : OptionalLong
+  }
+  class UserAgentParser {
+    + {static} parse(userAgent) : DeviceInfo
+  }
+}
+
+package "entity" {
+  class LoginAttempt
+  class BlockedIp
+  class AccountLock
+  class SecurityAlert
+  class IpInfo
+  enum RiskFlag {
+    AFTER_FAILURES
+    NEW_COUNTRY
+    VPN_OR_HOSTING
+    AUTOMATED_CLIENT
+    NEW_DEVICE
+  }
+}
+
+LoginProtectionFilter --> ClientIpResolver
+LoginProtectionFilter --> LoginProtectionService
+LoginFailureHandler --> LoginProtectionService
+LoginSuccessHandler --> LoginProtectionService
+LoginSuccessHandler --> SessionTracker
+LoginProtectionService --> LoginAttemptService
+LoginProtectionService --> BlockedIpService
+LoginProtectionService --> AccountLockService
+LoginProtectionService --> AllowlistService
+LoginProtectionService --> AlertService
+LoginProtectionService --> IpIntelService
+LoginAttemptService ..> UserAgentParser
+SimulatorService --> LoginProtectionService
+LoginAttemptService ..> LoginAttempt
+BlockedIpService ..> BlockedIp
+AccountLockService ..> AccountLock
+AlertService ..> SecurityAlert
+IpIntelService ..> IpInfo
+LoginAttempt --> RiskFlag
+@enduml

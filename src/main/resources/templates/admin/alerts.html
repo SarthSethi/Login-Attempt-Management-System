@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Alerts')}"></head>
+<body>
+<div th:replace="~{fragments :: header('admin', true)}"></div>
+
+<div class="wrapper wide page">
+    <div class="heading-row">
+        <h2 class="page-heading">Security Alerts</h2>
+        <form th:if="${openAlertCount > 0}" th:action="@{/admin/alerts/ack-all}" method="post" class="inline-form">
+            <button type="submit" class="btn btn-grey">Mark all as handled</button>
+        </form>
+    </div>
+    <div th:replace="~{fragments :: adminNav('alerts')}"></div>
+    <div th:replace="~{fragments :: flash}"></div>
+
+    <div class="panel">
+        <div class="panel-title">
+            <span th:text="${showAll ? 'All alerts (last 200)' : 'Open alerts'}">Open alerts</span>
+            <span class="right">
+                <a th:href="@{/admin/alerts}">open</a>
+                <a th:href="@{/admin/alerts(show='all')}">all</a>
+            </span>
+        </div>
+        <div class="panel-body table-scroll">
+            <table class="list" id="alerts-table">
+                <tr><th>Time</th><th>Severity</th><th>Type</th><th>Details</th><th>IP / Account</th><th></th></tr>
+                <tr th:if="${#lists.isEmpty(alerts)}"><td colspan="6" class="no-data">No alerts.</td></tr>
+                <tr th:each="al : ${alerts}">
+                    <td th:text="${@dates.format(al.createdAt)}">-</td>
+                    <td><span class="label" th:classappend="'label-' + ${#strings.toLowerCase(al.severity.name())}"
+                              th:text="${al.severity.name()}">HIGH</span></td>
+                    <td>
+                        <span th:text="${al.type.label}">Credential stuffing</span>
+                        <span class="tag tag-sim" th:if="${al.simulated}">SIMULATED</span>
+                    </td>
+                    <td class="wrap" th:text="${al.message}">message</td>
+                    <td>
+                        <a th:if="${al.ipAddress != null}" class="mono" th:href="@{/admin/ip(ip=${al.ipAddress})}" th:text="${al.ipAddress}">ip</a>
+                        <div th:if="${al.email != null}"><a th:href="@{/admin/attempts(email=${al.email})}" th:text="${al.email}">email</a></div>
+                    </td>
+                    <td>
+                        <form th:if="${!al.acknowledged}" th:action="@{/admin/alerts/{id}/ack(id=${al.id})}" method="post" class="inline-form">
+                            <button type="submit" class="btn btn-sm btn-grey">Mark handled</button>
+                        </form>
+                        <span th:if="${al.acknowledged}" class="sub" th:text="'handled by ' + ${al.acknowledgedBy}">handled</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: footer}"></div>
+<script th:src="@{/js/dashboard.js}"></script>
+</body>
+</html>

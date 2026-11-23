@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Error')}"></head>
+<body>
+<div th:replace="~{fragments :: header('public', false)}"></div>
+<div class="wrapper page">
+    <div class="panel form-panel">
+        <div class="panel-title">Something Went Wrong</div>
+        <div class="panel-body">
+            <p>An unexpected error occurred. Please try again after some time.</p>
+            <p><a th:href="@{/}">Go to Home Page</a></p>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments :: footer}"></div>
+</body>
+</html>

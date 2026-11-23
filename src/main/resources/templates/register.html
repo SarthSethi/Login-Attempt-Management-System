@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Register')}"></head>
+<body>
+<div th:replace="~{fragments :: header('public', false)}"></div>
+
+<div class="wrapper page">
+    <div class="panel form-panel">
+        <div class="panel-title">New User Registration</div>
+        <div class="panel-body">
+            <div th:if="${param.retry}" class="alert alert-warning">The page had expired, so nothing was saved. Please fill in the form again.</div>
+            <form th:action="@{/register}" th:object="${form}" method="post">
+                <div class="field">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" th:field="*{name}" maxlength="100" required autocomplete="name"
+                           th:classappend="${#fields.hasErrors('name')} ? 'has-error'">
+                    <span class="error-text" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></span>
+                </div>
+                <div class="field">
+                    <label for="email">Email ID</label>
+                    <input type="email" id="email" th:field="*{email}" maxlength="150" required autocomplete="email"
+                           th:classappend="${#fields.hasErrors('email')} ? 'has-error'">
+                    <span class="error-text" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></span>
+                </div>
+                <div class="field">
+                    <label for="password">Password <small>(min. 8 characters, letters and numbers)</small></label>
+                    <input type="password" id="password" th:field="*{password}" minlength="8" maxlength="64" required
+                           autocomplete="new-password" th:classappend="${#fields.hasErrors('password')} ? 'has-error'">
+                    <span class="error-text" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></span>
+                </div>
+                <div class="field">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" th:field="*{confirmPassword}" maxlength="64" required
+                           autocomplete="new-password" th:classappend="${#fields.hasErrors('confirmPassword')} ? 'has-error'">
+                    <span class="error-text" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></span>
+                </div>
+                <div class="buttons">
+                    <button type="submit" class="btn">Register</button>
+                    <button type="reset" class="btn btn-grey">Clear</button>
+                </div>
+            </form>
+
+            <p class="below-form">Already have an account? <a th:href="@{/login}">Login here</a></p>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: footer}"></div>
+</body>
+</html>

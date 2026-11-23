@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Access Denied')}"></head>
+<body>
+<div th:replace="~{fragments :: header('public', false)}"></div>
+<div class="wrapper page">
+    <div class="panel form-panel">
+        <div class="panel-title">403 - Access Denied</div>
+        <div class="panel-body">
+            <p th:if="${lamsFormExpired}">This form had expired, so nothing was changed. Go back, refresh the page and try again.</p>
+            <p th:unless="${lamsFormExpired}">You do not have permission to view this page.</p>
+            <p><a th:href="@{/dashboard}">Go to Dashboard</a></p>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments :: footer}"></div>
+</body>
+</html>

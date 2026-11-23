@@ -1,0 +1,47 @@
+@startuml
+!include _style.iuml
+!pragma layout smetana
+title Data Flow Diagram - Level 1 (v2)
+
+rectangle "User" as U #dfe6f0
+rectangle "Administrator" as A #dfe6f0
+
+usecase "1.0\nRegister\n(breach check)" as P1 #fdf2e3
+usecase "2.0\nCheck block\n/ lock" as P2 #fdf2e3
+usecase "3.0\nAuthenticate" as P3 #fdf2e3
+usecase "4.0\nApply rules\n& risk check" as P4 #fdf2e3
+usecase "5.0\nLook up\nIP details" as P5 #fdf2e3
+usecase "6.0\nUser security\npage" as P6 #fdf2e3
+usecase "7.0\nAdmin\ndashboard" as P7 #fdf2e3
+
+database "D1 users" as D1
+database "D2 login_attempts" as D2
+database "D3 blocked_ips" as D3
+database "D4 account_locks" as D4
+database "D5 security_alerts" as D5
+database "D6 ip_info" as D6
+
+U --> P1 : name, email, password
+P1 --> D1 : new user (BCrypt)
+U --> P2 : email, password, IP
+P2 --> D3 : read blocks
+P2 --> D4 : read locks
+P2 --> D2 : BLOCKED attempt
+P2 --> P3 : allowed
+P3 --> D1 : read user
+P3 --> P4 : success / failure
+P4 --> D2 : SUCCESS / FAILED attempt
+P4 --> D3 : new block
+P4 --> D4 : new lock
+P4 --> D5 : alert
+P5 --> D6 : location
+P4 --> P5 : IP
+U --> P6 : view, report, sign out
+D2 --> P6 : my attempts
+P6 --> D3 : block reported IP
+A --> P7 : search, actions
+D2 --> P7 : attempts
+D5 --> P7 : alerts
+D6 --> P7 : locations
+P7 --> D3 : manual block / unblock
+@enduml

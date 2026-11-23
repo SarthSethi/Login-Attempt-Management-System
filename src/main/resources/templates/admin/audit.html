@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Audit Log')}"></head>
+<body>
+<div th:replace="~{fragments :: header('admin', true)}"></div>
+
+<div class="wrapper wide page">
+    <h2 class="page-heading">Audit Log</h2>
+    <div th:replace="~{fragments :: adminNav('audit')}"></div>
+
+    <div class="panel">
+        <div class="panel-title">Administrator Actions <small>(last 200)</small></div>
+        <div class="panel-body table-scroll">
+            <table class="list" id="audit-table">
+                <tr><th>Time</th><th>Administrator</th><th>Action</th><th>Target</th><th>Details</th></tr>
+                <tr th:if="${#lists.isEmpty(actions)}"><td colspan="5" class="no-data">No administrator actions yet.</td></tr>
+                <tr th:each="a : ${actions}">
+                    <td th:text="${@dates.format(a.createdAt)}">-</td>
+                    <td th:text="${a.adminEmail}">admin</td>
+                    <td><span class="tag" th:text="${a.action}">BLOCK_IP</span></td>
+                    <td class="mono" th:text="${a.target != null ? a.target : '-'}">-</td>
+                    <td class="wrap" th:text="${a.detail != null ? a.detail : '-'}">-</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: footer}"></div>
+</body>
+</html>
